@@ -1,0 +1,289 @@
+RS = code_block(script(type='text/javascript'), 'D:\\Program Files\\RapydScript-master\\rs_build_ml.bat && D:\\tmp\\tmp_rapydml.js')
+vtempl = verbatim('<template>','</template>')
+asis = verbatim('','')
+#RactiveTempl_Start = verbatim('<script type="text/ractive">','')
+#RactiveTempl_End = verbatim('</script','')
+#--------------------- test_page --------------- 
+html:
+    head:
+        meta(charset='utf-8'):
+        link(rel="stylesheet" type="text/css" href= "{{=URL('static','css/font-awesome.min.css')}}"):
+        link(rel="stylesheet" type="text/css" href= "{{=URL('static','css/base.css')}}"):
+        script(src="{{=URL('static','js/vue.js')}}"):
+        script(src="{{=URL('static','js/axios.min.js')}}"):
+        script(type='text/javascript'):
+            "{{include 'default/look_ajx.js'}}"
+        #script(src="{{=URL('static','js/vue_js/look_up.js')}}"):
+        #script(src="{{=URL('default/views','default/look_ajx.js')}}"):
+
+    title:
+        "Welcome to my Web Page"
+    body:
+        div()
+            div(id = "container" style='width:150px;'):
+                look_up(:label = '"test look_up"'  :opt_lst = 'val_lst'  \
+                        :value='msg' :changed = 'changed' :error = 'error' @input = 'on_input' @blur = 'done'):
+                '<it_cmp value="it_cmp"><it_cmp>'        
+            div():
+                'any text'
+            
+        #--------------- test script --------------------
+        RS:
+            @external
+            class Vue:
+                @staticmethod
+                def component():
+                    pass
+                    
+            ajx = axios.create({
+                        baseURL: "{{=URL('default', 'call/json')}}",
+                        timeout: 1000,
+                        })
+            resp = def(d):
+                    print(d)            
+            ajx.post('look_up',{a: '34'}).then(resp)
+            Vue.component('look_up', val_widgets.look_up.make().component)        
+            Vue.component('option_select', val_widgets.option_select.make().component)     
+            Vue.component('it_cmp', {template: """<div v-html = 'value' style='color:blue;' ><div>""",  props: {value: String} })     
+            v_opt = {
+                el : '#container', 
+                delimiters: ['${', '}'],
+                data : {
+                            msg : 'qq',
+                            msg_was : 'qq',
+                            val_lst: [],
+                            sug_rest: ''
+                        },
+                computed : {
+                error: def():
+                            vc= this
+                            return not (vc.msg.startsWith('q'));
+                ,
+                changed: def():
+                            vc= this
+                            return not (vc.msg == vc.msg_was);            
+                    
+                },
+                methods:{
+                    done: def(e):
+                            this.sug_rest = '';
+                    ,        
+                    resp_procc: def(v, resp): 
+                                    if resp.data.vals:
+                                        this.sug_rest = ' asd'+ resp.data.vals[resp.data.vals.length-1]
+                                        this.val_lst = resp.data.vals
+                                    print('fire');    
+                    ,            
+                    on_input: def(v, callback):
+                                vc = this
+                                vc.msg = v
+                                print('inp')
+                                aft_load = def(resp): 
+                                                vc.resp_procc(v,resp)
+                                                callback and callback();
+                                ajx.post('look_up',{a: v}).then(aft_load);
+                }
+                
+            }
+            v = Vue(v_opt)
+            window.v = v
+            
+#------------------------- < TEMPLATES > ----------------------
+
+script(type='text/ractive',id="templ_select" ) :
+    div( @keydown = 'on_key_press(\$event)' ): #tabindex= '0'
+        div(v-if= 'opt_lst.length', class= "vl-options" ):
+            div(v-for = 'it, index in opt_lst' class = "vl-item"  @mousedown ='on_click(\$event, index, it)' :class = 'get_class(index, it)'):
+                component(v-if = 'it.component' :is = 'it.component' v-bind = 'get_v_bind(index, it)'):
+                template(v-else):
+                    div(v-html = "it.value" ):
+
+script(type='text/ractive',id="templ_inp" ) :
+    div():
+        div(style='display:inline-block; position:relative; width:100%'): #@click = 'focus_inp'
+            div():
+                div(v-if = '!active' v-html = 'value_div' :title = 'value' class = 'vl-input'  @click = 'activate' :class = "class_" ):
+                input(v-else   @blur = 'on_blur' @input = 'on_input', @keydown = 'on_key_press' \
+                         :value = "value" ref = 'inp' class = 'vl-input' :class = "class_"): 
+                        #style='outline:none; border:none; background-color:transparent;'):
+                #pre(v-text= 'val_e', style='display:inline'):
+            option_select( v-if='!done' :opt_lst='opt_lst' @select = 'select' :selected = 'current' ref ='opt_lst'):    
+            #div(v-if= 'val_lst.length', class= "vl-options" ):
+            #    div(v-for = 'it in val_lst', v-html = "it" class= "vl-item" ):
+                
+
+#---------------------- < RS_SCRIPT > -------------------------
+@external
+class Vue:
+    @staticmethod
+    def component():
+        pass
+
+class Option_select:
+    def __init__(self):
+        pass
+        
+    @staticmethod
+    def make():
+        obj = Option_select()
+        _template = @TMPL(templ_select)
+        obj.component = {
+            delimiters: ['${', '}'],
+            props: {
+                    selected: {type: Number, default: -1},
+                    opt_lst: {type: Array, default: def(): return [];},
+                    }
+            ,
+            data : def (): 
+                    ret = {}
+                    return ret;
+            ,        
+            template :  _template,
+
+            methods : {
+                get_v_bind: def(index, it):
+                                ret = isinstance(it.v_bind, Function) ? t.v_bind(index, it) : it.v_bind
+                                print('ret =',ret)
+                                return ret;
+                ,                 
+                get_item_repr:  def(index, it):
+                                    return {'v-html': it.value,  'class':  this.get_class(index, it)}; 
+                ,
+                get_class: def(index, it):
+                                return {'vl-item-selected' : this.selected==index, 
+                                        'vl-item-disabled' : it.disabled };
+                ,
+                get_first_enabled: def(dir):
+                                        vc = this
+                                        dlt = dir=='dn' or dir=='first' ? 1 :  -1 
+                                        i = vc.selected + dlt
+                                        if dir=='first':
+                                            i = 0
+                                        while  i >= 0  and  i <= vc.opt_lst.length-1:       
+                                            if not  vc.opt_lst[i].disabled:
+                                                print('i',i)
+                                                return i
+                                            i+=dlt    
+                                        return -1;
+                ,            
+                move: def(dir):
+                        vc = this
+                        _move_ = def ():
+                                    sel = vc.get_first_enabled(dir)
+                                    if sel!=-1:
+                                        vc.$emit('select', sel);
+                        if dir:
+                            if vc.opt_lst.length:
+                                _move_()
+                            else:
+                                vc.$nextTick(_move_);    
+                ,        
+                on_key_press: def(e): 
+                                    vc = this   
+                                    if e.keyCode == 13: 
+                                            vc.$emit('select', vc.selected, 'done')
+                                    elif e.keyCode == 40 and vc.selected < vc.opt_lst.length-1: 
+                                            vc.move('dn')
+                                    elif e.keyCode == 38 and vc.selected > 0: 
+                                            vc.move('up');
+                ,                    
+                on_click: def(e, index, it):
+                            vc = this
+                            if not it.disabled:
+                                vc.$emit('select', index, 'done');
+            }
+        }        
+        return obj
+
+        
+        
+        
+class Look_up:
+    def __init__(self):
+        pass
+        
+    @staticmethod
+    def make():
+        obj = Look_up()
+        _template = @TMPL(templ_inp)
+        obj.component = {
+            delimiters: ['${', '}'],
+            props: {
+                    value: String,
+                    opt_lst: Array,
+                    changed: {type: Boolean, deafult: False},
+                    error:  {type: Boolean, deafult: False}
+                    },
+            data : def (): 
+                    ret = {
+                        active: False,
+                        current:-1,
+                        done: False
+                    }
+                    return ret;
+            ,        
+            template :  _template
+            ,
+            computed: {
+                class_: def():
+                            return { 'vl-input-changed': this.changed and not this.error, 'vl-input-error': this.error };
+                ,            
+                value_div: def():
+                            vc = this
+                            ret= vc.value
+                            if not ret.trim():
+                                ret = '&nbsp;'
+                            return ret;
+            },
+            methods : {
+                activate: def():
+                            vc=this
+                            vc.active =True
+                            vc.$nextTick(def(): vc.$refs.inp.focus(););
+                ,            
+                select: def(i, done):
+                            this.current = i 
+                            this.done = done=='done'
+                            if this.done:
+                                this.$refs.inp.focus()
+                                this.$emit('input', this.opt_lst[i].value);    
+                ,             
+                on_blur: def(e):
+                            vc = this
+                            vc.done = 'done'
+                            vc.current = -1
+                            vc.active = False
+                            this.$emit('blur', e); 
+                ,            
+                on_key_press: def(e): 
+                                    vc = this   
+                                    dir = ''
+                                    next_tick = def(): 
+                                                    vc.$refs.opt_lst.move(dir);
+                                    if e.keyCode == 40: #dn
+                                        vc.done= False
+                                        if vc.$refs.opt_lst or vc.current==-1:
+                                            if vc.current==-1:
+                                                dir = 'first'
+                                                #fire load look_up
+                                                vc.$emit('input', vc.$refs.inp.value, next_tick)
+                                            else:
+                                                dir = 'dn'
+                                            vc.$nextTick(next_tick)
+                                    else:
+                                        vc.$refs.opt_lst and  vc.$refs.opt_lst.on_key_press(e);
+                ,
+                on_input: def(e):
+                            vc = this
+                            vc.done= False
+                            vc.$emit('input', vc.$refs.inp.value);
+                    }
+
+        }        
+        return obj
+        
+def main():
+    window.val_widgets = window.val_widgets or {}
+    window.val_widgets['look_up'] = Look_up
+    window.val_widgets['option_select'] = Option_select
+f= main() 
